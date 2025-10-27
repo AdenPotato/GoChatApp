@@ -1,0 +1,82 @@
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+
+class WebSocketService {
+  constructor() {
+    this.ws = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 1000;
+    this.messageHandlers = [];
+  }
+
+  connect(token) {
+    return new Promise((resolve, reject) => {
+      try {
+        const url = token ? `${WS_URL}?token=${token}` : WS_URL;
+        this.ws = new WebSocket(url);
+
+        this.ws.onopen = () => {
+          console.log('WebSocket connected');
+          this.reconnectAttempts = 0;
+          resolve();
+        };
+
+        this.ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            this.messageHandlers.forEach((handler) => handler(data));
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
+        };
+
+        this.ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          reject(error);
+        };
+
+        this.ws.onclose = () => {
+          console.log('WebSocket disconnected');
+          this.attemptReconnect(token);
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  attemptReconnect(token) {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      setTimeout(() => {
+        this.connect(token);
+      }, this.reconnectDelay * this.reconnectAttempts);
+    }
+  }
+
+  send(data) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data));
+    } else {
+      console.error('WebSocket is not connected');
+    }
+  }
+
+  onMessage(handler) {
+    this.messageHandlers.push(handler);
+  }
+
+  removeMessageHandler(handler) {
+    this.messageHandlers = this.messageHandlers.filter((h) => h !== handler);
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+  }
+}
+
+export default new WebSocketService();
