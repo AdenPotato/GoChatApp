@@ -23,6 +23,12 @@ func main() {
 		c.Next()
 	})
 
+	// Serve static files
+	router.Static("/static", "./static")
+	router.GET("/", func(c *gin.Context) {
+		c.File("./index.html")
+	})
+
 	// API routes
 	api := router.Group("/api")
 	{
