@@ -1,12 +1,20 @@
 package main
 
 import (
+	"GoChatApp/database"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	// Initialize database
+	database.InitDB()
+
+	// Seed database (optional - for development)
+	// Uncomment the line below to seed the database with sample data
+	// database.SeedDB()
+
 	router := gin.Default()
 
 	// CORS middleware for React frontend
