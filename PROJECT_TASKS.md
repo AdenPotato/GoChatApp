@@ -8,13 +8,13 @@ This document outlines all tasks for building the real-time chat application usi
 
 ### Phase 1: Database & Models
 
-- [ ] Choose and install database (PostgreSQL/MongoDB/SQLite)
-- [ ] Create database connection and configuration
-- [ ] Set up migration system (if using SQL)
-- [ ] Create User model/schema (username, email, password_hash, avatar, created_at)
-- [ ] Create Message model/schema (id, user_id, room_id, content, timestamp, edited, deleted)
-- [ ] Create Room/Channel model/schema (id, name, type, created_by, members)
-- [ ] Add database seeding for development/testing
+- [X] Choose and install database (PostgreSQL/MongoDB/SQLite)
+- [X] Create database connection and configuration
+- [X] Set up migration system (if using SQL)
+- [X] Create User model/schema (username, email, password_hash, avatar, created_at)
+- [X] Create Message model/schema (id, user_id, room_id, content, timestamp, edited, deleted)
+- [X] Create Room/Channel model/schema (id, name, type, created_by, members)
+- [X] Add database seeding for development/testing
 
 ### Phase 2: Authentication & Security
 
@@ -85,12 +85,12 @@ This document outlines all tasks for building the real-time chat application usi
 
 ### Phase 1: Project Setup & Routing
 
-- [ ] Initialize React app (Vite/Create React App)
-- [ ] Install dependencies (react-router, axios, socket.io-client/websocket)
-- [ ] Set up routing (/, /login, /register, /chat)
-- [ ] Configure API base URL (environment variables)
-- [ ] Set up Tailwind CSS or CSS framework
-- [ ] Create project folder structure (components, pages, hooks, utils)
+- [X] Initialize React app (Vite/Create React App)
+- [X] Install dependencies (react-router, axios, socket.io-client/websocket)
+- [X] Set up routing (/, /login, /register, /chat)
+- [X] Configure API base URL (environment variables)
+- [X] Set up Tailwind CSS or CSS framework
+- [X] Create project folder structure (components, pages, hooks, utils)
 
 ### Phase 2: Authentication UI
 
