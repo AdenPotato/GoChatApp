@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - GoChatApp</title>
+</head>
+<body>
+    <h1>Register</h1>
+
+    <form id="registerForm">
+        <div>
+            <label>Username:</label>
+            <input type="text" id="username" required>
+        </div>
+        <div>
+            <label>Email:</label>
+            <input type="email" id="email" required>
+        </div>
+        <div>
+            <label>Password:</label>
+            <input type="password" id="password" required minlength="6">
+        </div>
+        <button type="submit">Register</button>
+    </form>
+
+    <p id="message"></p>
+    <p><a href="/static/login.html">Already have an account? Login</a></p>
+    <p><a href="/">Home</a></p>
+
+    <script>
+        const form = document.getElementById('registerForm');
+        const message = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    message.textContent = 'Registration successful! Redirecting to chat...';
+                    message.style.color = 'green';
+
+                    // Store token
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+
+                    // Redirect to chat
+                    setTimeout(() => {
+                        window.location.href = '/static/chat.html';
+                    }, 1000);
+                } else {
+                    message.textContent = 'Error: ' + (data.error || 'Registration failed');
+                    message.style.color = 'red';
+                }
+            } catch (error) {
+                message.textContent = 'Error: ' + error.message;
+                message.style.color = 'red';
+            }
+        });
+    </script>
+</body>
+</html>
