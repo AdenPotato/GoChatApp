@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - GoChatApp</title>
+</head>
+<body>
+    <h1>Chat Room</h1>
+
+    <div id="userInfo">
+        <p>Logged in as: <strong id="currentUser"></strong></p>
+        <button id="logoutBtn">Logout</button>
+    </div>
+
+    <hr>
+
+    <div id="chatContainer">
+        <h2>Messages</h2>
+        <div id="messages" style="border: 1px solid #ccc; height: 400px; overflow-y: scroll; padding: 10px; margin-bottom: 10px;">
+            <p><em>Loading messages...</em></p>
+        </div>
+
+        <form id="messageForm">
+            <input type="text" id="messageInput" placeholder="Type a message..." required style="width: 80%;">
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <div id="usersContainer">
+        <h3>Users</h3>
+        <ul id="usersList"></ul>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        // Redirect to login if not authenticated
+        if (!token) {
+            window.location.href = '/static/login.html';
+        }
+
+        // Display current user
+        document.getElementById('currentUser').textContent = user.username || 'Unknown';
+
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/static/login.html';
+        });
+
+        // Load messages
+        async function loadMessages() {
+            try {
+                const response = await fetch('/api/messages', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+
+                const data = await response.json();
+                const messagesDiv = document.getElementById('messages');
+
+                if (response.ok && data.messages && data.messages.length > 0) {
+                    messagesDiv.innerHTML = '';
+                    data.messages.reverse().forEach(msg => {
+                        const messageEl = document.createElement('div');
+                        messageEl.innerHTML = `<strong>${msg.user?.username || 'Unknown'}:</strong> ${msg.content} <em style="font-size: 0.8em;">(${new Date(msg.created_at).toLocaleString()})</em>`;
+                        messagesDiv.appendChild(messageEl);
+                    });
+                } else {
+                    messagesDiv.innerHTML = '<p><em>No messages yet</em></p>';
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        // Load users
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                const usersList = document.getElementById('usersList');
+
+                if (response.ok && data.users && data.users.length > 0) {
+                    usersList.innerHTML = '';
+                    data.users.forEach(u => {
+                        const li = document.createElement('li');
+                        li.textContent = u.username;
+                        usersList.appendChild(li);
+                    });
+                } else {
+                    usersList.innerHTML = '<li><em>No users</em></li>';
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Send message
+        document.getElementById('messageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const content = document.getElementById('messageInput').value;
+
+            try {
+                const response = await fetch('/api/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ content })
+                });
+
+                if (response.ok) {
+                    document.getElementById('messageInput').value = '';
+                    loadMessages(); // Reload messages
+                } else {
+                    alert('Failed to send message');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        // Load initial data
+        loadMessages();
+        loadUsers();
+
+        // Refresh messages every 2 seconds (temporary, will use WebSocket later)
+        setInterval(loadMessages, 2000);
+    </script>
+</body>
+</html>
