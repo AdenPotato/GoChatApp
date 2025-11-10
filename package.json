@@ -1,0 +1,14 @@
+{
+  "name": "gochatapp",
+  "version": "1.0.0",
+  "description": "Chat application with Go backend and React frontend",
+  "scripts": {
+    "dev": "concurrently \"go run main.go\" \"cd frontend && npm run dev\"",
+    "dev:backend": "go run main.go",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:frontend": "cd frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
