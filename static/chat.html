@@ -39,7 +39,7 @@
         const user = JSON.parse(localStorage.getItem('user') || '{}');
 
         // Redirect to login if not authenticated
-        if (!token) {
+        if (!token || !user.id) {
             window.location.href = '/static/login.html';
         }
 
@@ -48,12 +48,107 @@
 
         // Logout functionality
         document.getElementById('logoutBtn').addEventListener('click', () => {
+            if (ws) {
+                ws.close();
+            }
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/static/login.html';
         });
 
-        // Load messages
+        // WebSocket connection
+        let ws = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        function connectWebSocket() {
+            const wsUrl = `ws://${window.location.host}/api/ws?user_id=${user.id}&username=${encodeURIComponent(user.username)}`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                reconnectAttempts = 0;
+                addSystemMessage('Connected to chat');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                addSystemMessage('Disconnected from chat');
+                attemptReconnect();
+            };
+        }
+
+        function attemptReconnect() {
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                console.log(`Attempting to reconnect... (${reconnectAttempts}/${maxReconnectAttempts})`);
+                setTimeout(connectWebSocket, 2000 * reconnectAttempts);
+            } else {
+                addSystemMessage('Failed to reconnect. Please refresh the page.');
+            }
+        }
+
+        function handleWebSocketMessage(data) {
+            const messagesDiv = document.getElementById('messages');
+
+            switch(data.type) {
+                case 'message':
+                case 'chat':
+                    addMessage(data.username, data.content, data.timestamp);
+                    break;
+                case 'user_joined':
+                    addSystemMessage(`${data.username} joined the chat`);
+                    break;
+                case 'user_left':
+                    addSystemMessage(`${data.username} left the chat`);
+                    break;
+                default:
+                    console.log('Unknown message type:', data);
+            }
+
+            // Auto-scroll to bottom
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function addMessage(username, content, timestamp) {
+            const messagesDiv = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+
+            const isOwnMessage = username === user.username;
+            messageEl.style.textAlign = isOwnMessage ? 'right' : 'left';
+            messageEl.style.margin = '5px 0';
+
+            messageEl.innerHTML = `<strong>${username}:</strong> ${content} <em style="font-size: 0.8em; color: #666;">(${time})</em>`;
+            messagesDiv.appendChild(messageEl);
+        }
+
+        function addSystemMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.style.textAlign = 'center';
+            messageEl.style.color = '#666';
+            messageEl.style.fontStyle = 'italic';
+            messageEl.style.margin = '10px 0';
+            messageEl.textContent = message;
+            messagesDiv.appendChild(messageEl);
+        }
+
+        // Load initial messages from API
         async function loadMessages() {
             try {
                 const response = await fetch('/api/messages', {
@@ -64,19 +159,21 @@
 
                 const data = await response.json();
                 const messagesDiv = document.getElementById('messages');
+                messagesDiv.innerHTML = ''; // Clear loading message
 
                 if (response.ok && data.messages && data.messages.length > 0) {
-                    messagesDiv.innerHTML = '';
                     data.messages.reverse().forEach(msg => {
-                        const messageEl = document.createElement('div');
-                        messageEl.innerHTML = `<strong>${msg.user?.username || 'Unknown'}:</strong> ${msg.content} <em style="font-size: 0.8em;">(${new Date(msg.created_at).toLocaleString()})</em>`;
-                        messagesDiv.appendChild(messageEl);
+                        addMessage(msg.user?.username || 'Unknown', msg.content, msg.created_at);
                     });
                 } else {
-                    messagesDiv.innerHTML = '<p><em>No messages yet</em></p>';
+                    addSystemMessage('No previous messages');
                 }
+
+                // Auto-scroll to bottom
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
             } catch (error) {
                 console.error('Error loading messages:', error);
+                addSystemMessage('Error loading messages');
             }
         }
 
@@ -92,6 +189,10 @@
                     data.users.forEach(u => {
                         const li = document.createElement('li');
                         li.textContent = u.username;
+                        if (u.id === user.id) {
+                            li.textContent += ' (you)';
+                            li.style.fontWeight = 'bold';
+                        }
                         usersList.appendChild(li);
                     });
                 } else {
@@ -102,39 +203,32 @@
             }
         }
 
-        // Send message
-        document.getElementById('messageForm').addEventListener('submit', async (e) => {
+        // Send message via WebSocket
+        document.getElementById('messageForm').addEventListener('submit', (e) => {
             e.preventDefault();
 
-            const content = document.getElementById('messageInput').value;
+            const content = document.getElementById('messageInput').value.trim();
 
-            try {
-                const response = await fetch('/api/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({ content })
-                });
+            if (!content) {
+                return;
+            }
 
-                if (response.ok) {
-                    document.getElementById('messageInput').value = '';
-                    loadMessages(); // Reload messages
-                } else {
-                    alert('Failed to send message');
-                }
-            } catch (error) {
-                alert('Error: ' + error.message);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = {
+                    type: 'message',
+                    content: content
+                };
+                ws.send(JSON.stringify(message));
+                document.getElementById('messageInput').value = '';
+            } else {
+                addSystemMessage('Cannot send message: Not connected');
             }
         });
 
-        // Load initial data
+        // Initialize
         loadMessages();
         loadUsers();
-
-        // Refresh messages every 2 seconds (temporary, will use WebSocket later)
-        setInterval(loadMessages, 2000);
+        connectWebSocket();
     </script>
 </body>
 </html>
