@@ -24,7 +24,7 @@ function Chat() {
     // Fetch message history
     api.get('/api/messages')
       .then((response) => {
-        const messageHistory = response.data || [];
+        const messageHistory = response.data.messages || [];
         // Transform backend messages to match frontend format
         const formattedMessages = messageHistory.map((msg) => ({
           username: msg.User?.username || 'Unknown',
@@ -42,7 +42,7 @@ function Chat() {
     // Fetch users list
     api.get('/api/users')
       .then((response) => {
-        setUsers(response.data || []);
+        setUsers(response.data.users || []);
       })
       .catch((error) => {
         console.error('Failed to load users:', error);

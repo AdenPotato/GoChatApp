@@ -1,3 +1,5 @@
+// IMPORTANT: The WebSocket endpoint is at /api/ws NOT /ws
+// Cache busting: 2025-11-12-v2
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/ws';
 
 class WebSocketService {
@@ -7,12 +9,14 @@ class WebSocketService {
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
     this.messageHandlers = [];
+    console.log('[WebSocketService] Initialized with URL:', WS_URL);
   }
 
   connect(userId, username) {
     return new Promise((resolve, reject) => {
       try {
         const url = `${WS_URL}?user_id=${userId}&username=${encodeURIComponent(username)}`;
+        console.log('[WebSocketService] Connecting to:', url);
         this.ws = new WebSocket(url);
 
         this.ws.onopen = () => {
