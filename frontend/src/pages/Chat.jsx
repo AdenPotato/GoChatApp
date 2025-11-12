@@ -51,13 +51,15 @@ function Chat() {
 
   // Setup WebSocket connection
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const userId = localStorage.getItem('user_id');
+    const username = localStorage.getItem('username');
+
+    if (!userId || !username) {
       return;
     }
 
     // Connect to WebSocket
-    websocketService.connect(token)
+    websocketService.connect(userId, username)
       .then(() => {
         setConnected(true);
       })
@@ -90,8 +92,6 @@ function Chat() {
     websocketService.send({
       type: 'message',
       content: newMessage,
-      username: username,
-      timestamp: new Date().toISOString(),
     });
 
     setNewMessage('');
@@ -100,6 +100,7 @@ function Chat() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('user_id');
     websocketService.disconnect();
     navigate('/login');
   };

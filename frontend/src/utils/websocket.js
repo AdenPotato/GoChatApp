@@ -1,4 +1,4 @@
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/ws';
 
 class WebSocketService {
   constructor() {
@@ -9,10 +9,10 @@ class WebSocketService {
     this.messageHandlers = [];
   }
 
-  connect(token) {
+  connect(userId, username) {
     return new Promise((resolve, reject) => {
       try {
-        const url = token ? `${WS_URL}?token=${token}` : WS_URL;
+        const url = `${WS_URL}?user_id=${userId}&username=${encodeURIComponent(username)}`;
         this.ws = new WebSocket(url);
 
         this.ws.onopen = () => {
@@ -37,7 +37,7 @@ class WebSocketService {
 
         this.ws.onclose = () => {
           console.log('WebSocket disconnected');
-          this.attemptReconnect(token);
+          this.attemptReconnect(userId, username);
         };
       } catch (error) {
         reject(error);
@@ -45,12 +45,12 @@ class WebSocketService {
     });
   }
 
-  attemptReconnect(token) {
+  attemptReconnect(userId, username) {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       setTimeout(() => {
-        this.connect(token);
+        this.connect(userId, username);
       }, this.reconnectDelay * this.reconnectAttempts);
     }
   }
