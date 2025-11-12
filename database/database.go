@@ -42,3 +42,32 @@ func Migrate() {
 func GetDB() *gorm.DB {
 	return DB
 }
+
+// FlushDB deletes all data from all tables
+func FlushDB() error {
+	log.Println("Flushing database...")
+
+	// Delete all records from each table
+	if err := DB.Exec("DELETE FROM messages").Error; err != nil {
+		log.Printf("Error deleting messages: %v", err)
+		return err
+	}
+
+	if err := DB.Exec("DELETE FROM rooms").Error; err != nil {
+		log.Printf("Error deleting rooms: %v", err)
+		return err
+	}
+
+	if err := DB.Exec("DELETE FROM users").Error; err != nil {
+		log.Printf("Error deleting users: %v", err)
+		return err
+	}
+
+	// Reset SQLite auto-increment counters
+	DB.Exec("DELETE FROM sqlite_sequence WHERE name='messages'")
+	DB.Exec("DELETE FROM sqlite_sequence WHERE name='rooms'")
+	DB.Exec("DELETE FROM sqlite_sequence WHERE name='users'")
+
+	log.Println("Database flushed successfully")
+	return nil
+}

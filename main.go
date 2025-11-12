@@ -14,6 +14,9 @@ func main() {
 	// Initialize database
 	database.InitDB()
 
+	//schizo function for database flushing
+	//database.FlushDB()
+
 	// Seed database (optional - for development)
 	// Uncomment the line below to seed the database with sample data
 	// database.SeedDB()
