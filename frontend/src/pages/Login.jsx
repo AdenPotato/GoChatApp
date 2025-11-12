@@ -22,7 +22,8 @@ function Login() {
 
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('username', username);
+        localStorage.setItem('username', response.data.user.username);
+        localStorage.setItem('user_id', response.data.user.id);
         navigate('/chat');
       }
     } catch (err) {
