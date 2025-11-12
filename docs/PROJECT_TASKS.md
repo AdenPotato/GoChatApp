@@ -18,42 +18,42 @@ This document outlines all tasks for building the real-time chat application usi
 
 ### Phase 2: Authentication & Security
 
-- [ ] Install bcrypt library for password hashing
-- [ ] Implement JWT token generation (using jwt-go or similar)
-- [ ] Create JWT validation middleware
-- [ ] Complete `/register` endpoint with password hashing and user creation
-- [ ] Complete `/login` endpoint with credential validation and JWT generation
-- [ ] Add token refresh endpoint
-- [ ] Add authentication middleware for protected routes
-- [ ] Implement logout/token invalidation
+- [X] Install bcrypt library for password hashing
+- [X] Implement JWT token generation (using jwt-go or similar)
+- [X] Create JWT validation middleware
+- [X] Complete `/register` endpoint with password hashing and user creation
+- [X] Complete `/login` endpoint with credential validation and JWT generation
+- [X] Add token refresh endpoint
+- [X] Add authentication middleware for protected routes
+- [X] Implement logout/token invalidation
 
 ### Phase 3: REST API Endpoints
 
-- [ ] Update `/messages` GET to return real data from database with pagination
-- [ ] Update `/messages` POST to save messages to database
-- [ ] Create `/messages/:id` PUT for editing messages
-- [ ] Create `/messages/:id` DELETE for deleting messages
-- [ ] Update `/users` GET to return real users from database
-- [ ] Add `/users/:id` GET for user profile
-- [ ] Add `/users/:id` PUT for updating profile
-- [ ] Create `/rooms` GET to list all chat rooms
-- [ ] Create `/rooms` POST to create new room
-- [ ] Create `/rooms/:id/join` POST to join room
-- [ ] Create `/rooms/:id/leave` POST to leave room
-- [ ] Add `/users/search` GET for user search
+- [X] Update `/messages` GET to return real data from database with pagination
+- [X] Update `/messages` POST to save messages to database
+- [X] Create `/messages/:id` PUT for editing messages
+- [X] Create `/messages/:id` DELETE for deleting messages
+- [X] Update `/users` GET to return real users from database
+- [X] Add `/users/:id` GET for user profile
+- [X] Add `/users/:id` PUT for updating profile
+- [X] Create `/rooms` GET to list all chat rooms
+- [X] Create `/rooms` POST to create new room
+- [X] Create `/rooms/:id/join` POST to join room
+- [X] Create `/rooms/:id/leave` POST to leave room
+- [X] Add `/users/search` GET for user search
 
 ### Phase 4: WebSocket Implementation
 
-- [ ] Install gorilla/websocket library
-- [ ] Implement WebSocket upgrade in `handleWebSocket` function
-- [ ] Create Hub/Manager struct to track active connections
-- [ ] Implement client registration (on connect)
-- [ ] Implement client unregistration (on disconnect)
-- [ ] Create message broadcasting logic (to all clients in room)
-- [ ] Add ping/pong heartbeat mechanism
-- [ ] Handle different WebSocket message types (chat, typing, etc.)
+- [X] Install gorilla/websocket library
+- [X] Implement WebSocket upgrade in `handleWebSocket` function
+- [X] Create Hub/Manager struct to track active connections
+- [X] Implement client registration (on connect)
+- [X] Implement client unregistration (on disconnect)
+- [X] Create message broadcasting logic (to all clients in room)
+- [X] Add ping/pong heartbeat mechanism
+- [X] Handle different WebSocket message types (chat, typing, etc.)
 - [ ] Implement room-based message routing
-- [ ] Add online/offline status broadcasting
+- [X] Add online/offline status broadcasting
 
 ### Phase 5: Advanced Features
 
