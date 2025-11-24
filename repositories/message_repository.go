@@ -62,3 +62,22 @@ func (r *MessageRepository) Update(message *models.Message) error {
 func (r *MessageRepository) Delete(id uint) error {
 	return r.db.Model(&models.Message{}).Where("id = ?", id).Update("deleted", true).Error
 }
+
+// Search searches messages by content
+func (r *MessageRepository) Search(query string, roomID uint, limit, offset int) ([]models.Message, error) {
+	var messages []models.Message
+	db := r.db.Where("deleted = ? AND content LIKE ?", false, "%"+query+"%")
+
+	if roomID > 0 {
+		db = db.Where("room_id = ?", roomID)
+	}
+
+	err := db.Preload("User").
+		Preload("Room").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&messages).Error
+
+	return messages, err
+}

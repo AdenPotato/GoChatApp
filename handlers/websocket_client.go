@@ -59,22 +59,50 @@ func (c *Client) ReadPump() {
 			continue
 		}
 
-		// Create a broadcast message with user info
-		broadcastMsg := map[string]interface{}{
-			"type":       payload.Type,
-			"content":    payload.Content,
-			"user_id":    c.UserID,
-			"username":   c.Username,
-			"timestamp":  time.Now(),
-		}
+		// Handle different message types
+		switch payload.Type {
+		case "join_room":
+			if payload.RoomID > 0 {
+				c.Hub.JoinRoom(c, payload.RoomID)
+			}
+		case "leave_room":
+			if payload.RoomID > 0 {
+				c.Hub.LeaveRoom(c, payload.RoomID)
+			}
+		case "chat", "typing", "stop_typing":
+			// Create a broadcast message with user info
+			broadcastMsg := map[string]interface{}{
+				"type":      payload.Type,
+				"content":   payload.Content,
+				"user_id":   c.UserID,
+				"username":  c.Username,
+				"timestamp": time.Now(),
+			}
 
-		if payload.RoomID > 0 {
-			broadcastMsg["room_id"] = payload.RoomID
-		}
-
-		// Marshal and broadcast
-		if msgBytes, err := json.Marshal(broadcastMsg); err == nil {
-			c.Hub.Broadcast <- msgBytes
+			if payload.RoomID > 0 {
+				broadcastMsg["room_id"] = payload.RoomID
+				// Send to specific room
+				if msgBytes, err := json.Marshal(broadcastMsg); err == nil {
+					c.Hub.RoomBroadcast <- RoomMessage{RoomID: payload.RoomID, Message: msgBytes}
+				}
+			} else {
+				// Broadcast to all (global chat)
+				if msgBytes, err := json.Marshal(broadcastMsg); err == nil {
+					c.Hub.Broadcast <- msgBytes
+				}
+			}
+		default:
+			// For unknown types, broadcast to all
+			broadcastMsg := map[string]interface{}{
+				"type":      payload.Type,
+				"content":   payload.Content,
+				"user_id":   c.UserID,
+				"username":  c.Username,
+				"timestamp": time.Now(),
+			}
+			if msgBytes, err := json.Marshal(broadcastMsg); err == nil {
+				c.Hub.Broadcast <- msgBytes
+			}
 		}
 	}
 }

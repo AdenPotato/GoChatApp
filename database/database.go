@@ -30,6 +30,11 @@ func Migrate() {
 		&models.User{},
 		&models.Room{},
 		&models.Message{},
+		&models.Reaction{},
+		&models.Conversation{},
+		&models.DirectMessage{},
+		&models.Block{},
+		&models.ReadReceipt{},
 	)
 	if err != nil {
 		log.Fatal("Failed to run migrations:", err)
