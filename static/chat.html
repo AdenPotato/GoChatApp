@@ -15,23 +15,32 @@
 
     <hr>
 
-    <div id="chatContainer">
-        <h2>Messages</h2>
-        <div id="messages" style="border: 1px solid #ccc; height: 400px; overflow-y: scroll; padding: 10px; margin-bottom: 10px;">
-            <p><em>Loading messages...</em></p>
+    <div style="display: flex; gap: 20px;">
+        <div id="roomsContainer" style="width: 200px;">
+            <h3>Rooms</h3>
+            <div id="roomsList" style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;"></div>
+            <form id="createRoomForm">
+                <input type="text" id="newRoomName" placeholder="Room name" required style="width: 100%; margin-bottom: 5px;">
+                <button type="submit" style="width: 100%;">Create Room</button>
+            </form>
         </div>
 
-        <form id="messageForm">
-            <input type="text" id="messageInput" placeholder="Type a message..." required style="width: 80%;">
-            <button type="submit">Send</button>
-        </form>
-    </div>
+        <div id="chatContainer" style="flex: 1;">
+            <h2>Messages <span id="currentRoomName">(Global)</span></h2>
+            <div id="messages" style="border: 1px solid #ccc; height: 400px; overflow-y: scroll; padding: 10px; margin-bottom: 10px;">
+                <p><em>Loading messages...</em></p>
+            </div>
 
-    <hr>
+            <form id="messageForm">
+                <input type="text" id="messageInput" placeholder="Type a message..." required style="width: 80%;">
+                <button type="submit">Send</button>
+            </form>
+        </div>
 
-    <div id="usersContainer">
-        <h3>Users</h3>
-        <ul id="usersList"></ul>
+        <div id="usersContainer" style="width: 150px;">
+            <h3>Users</h3>
+            <ul id="usersList"></ul>
+        </div>
     </div>
 
     <script>
@@ -56,13 +65,16 @@
             window.location.href = '/static/login.html';
         });
 
+        // Current room tracking
+        let currentRoomId = null;
+
         // WebSocket connection
         let ws = null;
         let reconnectAttempts = 0;
         const maxReconnectAttempts = 5;
 
         function connectWebSocket() {
-            const wsUrl = `ws://${window.location.host}/api/ws?user_id=${user.id}&username=${encodeURIComponent(user.username)}`;
+            const wsUrl = `ws://${window.location.host}/api/ws?token=${encodeURIComponent(token)}`;
 
             ws = new WebSocket(wsUrl);
 
@@ -108,13 +120,31 @@
             switch(data.type) {
                 case 'message':
                 case 'chat':
-                    addMessage(data.username, data.content, data.timestamp);
+                    // Only show messages for current room (or global if no room)
+                    if (data.room_id === currentRoomId || (!data.room_id && !currentRoomId)) {
+                        addMessage(data.username, data.content, data.timestamp);
+                    }
                     break;
                 case 'user_joined':
-                    addSystemMessage(`${data.username} joined the chat`);
+                    // Only show global join/leave when in global chat
+                    if (!currentRoomId) {
+                        addSystemMessage(`${data.username} joined the chat`);
+                    }
                     break;
                 case 'user_left':
-                    addSystemMessage(`${data.username} left the chat`);
+                    if (!currentRoomId) {
+                        addSystemMessage(`${data.username} left the chat`);
+                    }
+                    break;
+                case 'room_user_joined':
+                    if (data.room_id === currentRoomId) {
+                        addSystemMessage(`${data.username} joined the room`);
+                    }
+                    break;
+                case 'room_user_left':
+                    if (data.room_id === currentRoomId) {
+                        addSystemMessage(`${data.username} left the room`);
+                    }
                     break;
                 default:
                     console.log('Unknown message type:', data);
@@ -215,9 +245,12 @@
 
             if (ws && ws.readyState === WebSocket.OPEN) {
                 const message = {
-                    type: 'message',
+                    type: 'chat',
                     content: content
                 };
+                if (currentRoomId) {
+                    message.room_id = currentRoomId;
+                }
                 ws.send(JSON.stringify(message));
                 document.getElementById('messageInput').value = '';
             } else {
@@ -225,9 +258,98 @@
             }
         });
 
+        // Load rooms
+        async function loadRooms() {
+            try {
+                const response = await fetch('/api/rooms');
+                const data = await response.json();
+                const roomsList = document.getElementById('roomsList');
+
+                roomsList.innerHTML = '';
+
+                // Add global chat option
+                const globalBtn = document.createElement('button');
+                globalBtn.textContent = 'Global Chat';
+                globalBtn.style.cssText = 'width: 100%; margin-bottom: 5px; padding: 5px;';
+                globalBtn.onclick = () => switchRoom(null, 'Global');
+                if (!currentRoomId) {
+                    globalBtn.style.fontWeight = 'bold';
+                    globalBtn.style.backgroundColor = '#ddd';
+                }
+                roomsList.appendChild(globalBtn);
+
+                if (response.ok && data.rooms && data.rooms.length > 0) {
+                    data.rooms.forEach(room => {
+                        const roomBtn = document.createElement('button');
+                        roomBtn.textContent = room.name;
+                        roomBtn.style.cssText = 'width: 100%; margin-bottom: 5px; padding: 5px;';
+                        roomBtn.onclick = () => switchRoom(room.id, room.name);
+                        if (currentRoomId === room.id) {
+                            roomBtn.style.fontWeight = 'bold';
+                            roomBtn.style.backgroundColor = '#ddd';
+                        }
+                        roomsList.appendChild(roomBtn);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading rooms:', error);
+            }
+        }
+
+        // Switch to a room
+        function switchRoom(roomId, roomName) {
+            // Leave current room if in one
+            if (currentRoomId && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'leave_room', room_id: currentRoomId }));
+            }
+
+            currentRoomId = roomId;
+            document.getElementById('currentRoomName').textContent = `(${roomName})`;
+            document.getElementById('messages').innerHTML = '';
+
+            // Join new room if not global
+            if (roomId && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'join_room', room_id: roomId }));
+            }
+
+            addSystemMessage(`Switched to ${roomName}`);
+            loadRooms(); // Refresh room list to update highlighting
+        }
+
+        // Create room
+        document.getElementById('createRoomForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const roomName = document.getElementById('newRoomName').value.trim();
+            if (!roomName) return;
+
+            try {
+                const response = await fetch('/api/rooms', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ name: roomName })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('newRoomName').value = '';
+                    loadRooms();
+                    // Switch to the new room
+                    switchRoom(data.room.id, data.room.name);
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to create room'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
         // Initialize
         loadMessages();
         loadUsers();
+        loadRooms();
         connectWebSocket();
     </script>
 </body>

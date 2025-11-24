@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"GoChatApp/utils"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -32,21 +32,22 @@ func NewWebSocketHandler() *WebSocketHandler {
 
 // HandleWebSocket handles WebSocket connections
 func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
-	// Get user information from query parameters (for simple auth)
-	// In production, you'd validate JWT token here
-	userIDStr := c.Query("user_id")
-	username := c.Query("username")
-
-	if userIDStr == "" || username == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id and username required"})
+	// Get JWT token from query parameter (WebSocket doesn't support headers easily)
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "token required"})
 		return
 	}
 
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	// Validate JWT token
+	claims, err := utils.ValidateToken(token)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
 		return
 	}
+
+	userID := claims.UserID
+	username := claims.Username
 
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -60,8 +61,9 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 		Hub:      h.Hub,
 		Conn:     conn,
 		Send:     make(chan []byte, 256),
-		UserID:   uint(userID),
+		UserID:   userID,
 		Username: username,
+		Rooms:    make(map[uint]bool),
 	}
 
 	// Register client with hub
