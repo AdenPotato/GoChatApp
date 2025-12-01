@@ -5,6 +5,11 @@ set -e
 
 echo "Building GoChatApp for production..."
 
+# Clean previous build artifacts
+echo "Cleaning previous build..."
+rm -rf dist
+rm -f gochatapp
+
 # Build React frontend
 echo "Building React frontend..."
 cd frontend
