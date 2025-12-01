@@ -14,28 +14,15 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, userHand
 	// Apply CORS middleware
 	router.Use(middleware.CORSMiddleware())
 
-	// Serve React build (production) or static test files (development)
+	// Serve React build (production)
 	if _, err := os.Stat("./dist"); err == nil {
-		// Serve React production build
+		// Serve React production build assets
 		router.Static("/assets", "./dist/assets")
-		router.StaticFile("/", "./dist/index.html")
 		router.StaticFile("/favicon.ico", "./dist/favicon.ico")
-
-		// SPA fallback - serve index.html for all non-API routes
-		router.NoRoute(func(c *gin.Context) {
-			// Don't serve index.html for API routes
-			if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
-				return
-			}
-			c.File("./dist/index.html")
-		})
+		router.StaticFile("/vite.svg", "./dist/vite.svg")
 	} else {
 		// Fallback to static test files for development
 		router.Static("/static", "./static")
-		router.GET("/", func(c *gin.Context) {
-			c.File("./index.html")
-		})
 	}
 
 	// Serve uploaded files
@@ -108,4 +95,31 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, userHand
 		// File upload (protected)
 		protected.POST("/upload", uploadHandler.UploadFile)
 	}
+
+	// SPA fallback - serve index.html for all non-API/non-static routes
+	// This must be registered LAST to act as a catch-all
+	router.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		// Don't serve index.html for API routes
+		if len(path) >= 4 && path[:4] == "/api" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		// Don't serve index.html for /uploads or /assets
+		if len(path) >= 8 && path[:8] == "/uploads" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		if len(path) >= 7 && path[:7] == "/assets" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		// Check if dist directory exists (production mode)
+		if _, err := os.Stat("./dist/index.html"); err == nil {
+			c.File("./dist/index.html")
+		} else {
+			// Development mode - serve test index
+			c.File("./index.html")
+		}
+	})
 }
