@@ -1,5 +1,6 @@
 // IMPORTANT: The WebSocket endpoint is at /api/ws NOT /ws
-// Cache busting: 2025-11-12-v2
+// WebSocket now uses token-based authentication via query parameter
+// Cache busting: 2025-12-01-v3
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/ws';
 
 class WebSocketService {
@@ -9,13 +10,24 @@ class WebSocketService {
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
     this.messageHandlers = [];
+    this.userId = null;
+    this.username = null;
     console.log('[WebSocketService] Initialized with URL:', WS_URL);
   }
 
   connect(userId, username) {
     return new Promise((resolve, reject) => {
       try {
-        const url = `${WS_URL}?user_id=${userId}&username=${encodeURIComponent(username)}`;
+        // Store for reconnection attempts
+        this.userId = userId;
+        this.username = username;
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+          reject(new Error('No authentication token found'));
+          return;
+        }
+        const url = `${WS_URL}?token=${encodeURIComponent(token)}`;
         console.log('[WebSocketService] Connecting to:', url);
         this.ws = new WebSocket(url);
 
@@ -41,7 +53,7 @@ class WebSocketService {
 
         this.ws.onclose = () => {
           console.log('WebSocket disconnected');
-          this.attemptReconnect(userId, username);
+          this.attemptReconnect();
         };
       } catch (error) {
         reject(error);
@@ -49,12 +61,12 @@ class WebSocketService {
     });
   }
 
-  attemptReconnect(userId, username) {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+  attemptReconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts && this.userId && this.username) {
       this.reconnectAttempts++;
       console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       setTimeout(() => {
-        this.connect(userId, username);
+        this.connect(this.userId, this.username);
       }, this.reconnectDelay * this.reconnectAttempts);
     }
   }
